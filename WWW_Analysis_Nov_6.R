@@ -1,11 +1,11 @@
 # R Code for
-# An October Surprise: the socio-ecological causes and consequences of a large scale winter weather whiplash event
+# Coupled human-natural system impacts of a winter weather whiplash event 
 # 
 
 # Christopher Macdonald Hewitt (University of Western Ontario)
 # Nora Casson (University of Winnipeg)
-# John Campbell (USDA - FS)
 # Alix Contosta (University of New Hampshire)
+# John Campbell (USDA - FS)
 # David Lutz (Dartmouth College)
 # Anita Morzillo (University of Connecticut)
 # Irena Creed (University of Toronto)
@@ -18,7 +18,7 @@ library(randomForest)
 library(regclass)
 
 # Set working directory.
-setwd("C:/Users/redba/Documents/Articles/WWW_Paper/Input_Data2")
+setwd("C:/Users/Chris Hewitt/Downloads/Input_Data_Nov_2022")
 
 # Load the different data sources.
 data2 <- read.csv("County_Area_and_SVI_Data.csv")
@@ -28,8 +28,9 @@ data3 <- Newspaper[,c(3,7,15,16,17)]
 
 # Snowfall
 Snowfall <- read.csv("Snow_28_31_Table.csv")
-Snowfall2 <- Snowfall[,c(1,8)]
-names(Snowfall2)[names(Snowfall2) == 'MEAN'] <- 'SWE_Oct_28_31'
+Snowfall$MEAN_mm <- Snowfall$MEAN * 25.4 # Converts from inches to mm.
+Snowfall2 <- Snowfall[,c(1,11)]
+names(Snowfall2)[names(Snowfall2) == 'MEAN_mm'] <- 'SWE_Oct_28_31'
 
 # Roads
 Sec_Road_dis <- read.csv("Secondary_Roads_Distance.csv")
@@ -177,11 +178,11 @@ write.csv(AIC_rsq_table, "AIC_Table_rpart.csv")
 write.csv(data, "Input_Data_Sept_1.csv")
 
 ### Created in ArcGIS. Maps of predictor variables per county. 
-### (A) Average 4-day snowfall accumulation (inches snow water equivalent); 
-### (B) Average leaf area index (unitless) for October 28, 2011; 
-### (C) Road density (km km-2); 
-### (D) Population density (people km-2); 
-### (E) Average income in $USD; 
+### (A) Average 4-day snowfall accumulation (mm snow water equivalent). 
+### (B) Average leaf area index (unitless) for October 28, 2011.
+### (C) Road density (km km-2). 
+### (D) Population density (people km-2).
+### (E) Average per capita income in $USD.
 ### (F) Social vulnerability index (unitless).
 
 ### Figure 3
@@ -194,8 +195,43 @@ data_predicted<-cbind(data, predicted)
 write.csv(data_predicted, "Output_Data_Sept_1.csv")
 
 ### Created in ArcGIS 
-### (A) Number of newspaper articles about the snowstorm per county; 
-### (B) Number of publishing newspapers of those articles in A; 
-### (C) Observed impact of the storm expressed as the number of articles divided by the number of publishing newspapers; 
+### (A) Number of newspaper articles about the snowstorm per county. 
+### (B) Number of publishing newspapers of those articles in A. 
+### (C) Observed impact of the storm expressed as the number of articles divided by the number of publishing newspapers. 
 ### (D) Predicted impact of the Halloween Nor'Easter.
 
+### Figure 4
+
+### Modified R plots.
+
+### (A) Variable importance plot of the random forests analysis showing the relative importance of each predictor variable. 
+
+### Plot importance plot from random forest analysis.
+varImp<-varImpPlot(RF_SWE_Road_Inc_LAI, type = 1, yaxt = "n")
+
+### (B-E) Partial dependence plots of each predictor variable used in the random forests analysis.
+### (B) Average per capita income in $USD.
+### (C) Average leaf area index (unitless) for October 28, 2011.
+### (D) Road density (km km-2).
+### (E) Average 4-day snowfall accumulation (mm snow water equivalent).
+
+### Partial dependence plots 
+### Restrict data to only variables of interest.
+namesRF<-c("Rate", "SWE_Oct_28_31", "Sec_Road_Den", "LAI_Mean", "E_PCI")
+dataRF<-data[namesRF]
+
+### Partial dependence plots by variable.
+partialPlot(RF_SWE_Road_Inc_LAI, dataRF, x.var = SWE_Oct_28_31, main = "", ylab = "Response Variable", xlab = "SWE (mm)")
+partialPlot(RF_SWE_Road_Inc_LAI, dataRF, x.var = Sec_Road_Den, main = "", ylab = "Response Variable", xlab = "Road Density")
+partialPlot(RF_SWE_Road_Inc_LAI, dataRF, x.var = LAI_Mean, main = "", ylab = "Response Variable", xlab = "LAI")
+partialPlot(RF_SWE_Road_Inc_LAI, dataRF, x.var = E_PCI, main = "", ylab = "Response Variable", xlab = "Income")
+
+# Order the plots in descending order of variable importance.
+imp <- importance(RF_SWE_Road_Inc_LAI)
+impvar <- rownames(imp)[order(imp[, 1], decreasing=TRUE)]
+op <- par(mfrow=c(3, 2), mar = c(2,2,2,2), oma= c(1,1,1,1))
+for (i in seq_along(impvar)) {
+  partialPlot(RF_SWE_Road_Inc_LAI, dataRF, impvar[i], xlab=impvar[i], ylab = "Rate",
+              main="")
+}
+par(op)
